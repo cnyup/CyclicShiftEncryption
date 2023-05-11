@@ -21,6 +21,6 @@
 ````
 make build
 - 加密文件：
-./encrypter -en -key yupyup -in test_en.xml -out test_de.xml
+./encrypter -en -key yupyup -in test.xml -out test_en.xml
 解密文件：
-./encrypter -de -key yupyup -in test_de.xml -out test_en_new.xml
+./encrypter -de -key yupyup -in test_en.xml -out test_de.xml
