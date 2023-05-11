@@ -2,7 +2,10 @@
 BIN_FILE=encrypter
 all: check build
 build:
+	@go mod tidy
 	@go build -ldflags "-w -s" -o "${BIN_FILE}"
+	@strip --strip-unneeded $(BIN_FILE)
+	@upx --lzma $(BIN_FILE)
 clean:
 	@go clean
 	rm --force "xx.out"
