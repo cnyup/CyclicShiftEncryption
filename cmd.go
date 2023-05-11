@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
-	"sync"
 )
 
 //				循环移位加密算法 加密文件
@@ -33,10 +33,10 @@ func init() {
 }
 
 // READBYTE 分片大小
-var READBYTE = 1024
+var READBYTE = 256
 
 // NEEDSHARD 分片阈值
-var NEEDSHARD int64 = 1024 * 1000 // 1mb
+var NEEDSHARD int64 = 1024 // 1mb
 
 // 分片加密解密 大小会变
 
@@ -103,10 +103,6 @@ func fileSize(filename string) (int64, error) {
 func streamencryptFiles(infile, outfile, key string, enLen int) error {
 
 	pass := []byte(key)
-	inCh := make(chan []byte, READBYTE)
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
 
 	inFile, err := os.OpenFile(infile, os.O_RDONLY, 0644)
 	if err != nil {
@@ -122,37 +118,20 @@ func streamencryptFiles(infile, outfile, key string, enLen int) error {
 	}
 	defer outFile.Close()
 
-	go func() {
-		for {
-			select {
-			case n, ok := <-inCh:
-				fmt.Println(ok)
-				if !ok {
-					fmt.Println(n)
-					wg.Done()
-					return
-				}
-
-				endata, _ := Encrypt(n, pass, enLen)
-				outFile.Write(endata)
-			}
-		}
-	}()
-
 	for {
-		// 每次读取字节数
 		buffer := make([]byte, READBYTE)
-		data, _ := inFile.Read(buffer)
-
-		// 读取到数据
-		if data > 0 {
-			inCh <- buffer[:data]
-		} else {
-			close(inCh)
+		count, err := inFile.Read(buffer)
+		if err == io.EOF {
 			break
 		}
+		if err != nil {
+			fmt.Println(err)
+		}
+		// 加密
+		endata, _ := Encrypt(buffer[:count], pass, enLen)
+
+		outFile.Write(endata)
 	}
-	wg.Wait()
 	return nil
 }
 
@@ -161,9 +140,6 @@ func streamencryptFiles(infile, outfile, key string, enLen int) error {
 func streamdecryptFiles(infile, outfile, key string, enLen int) error {
 
 	pass := []byte(key)
-	inCh := make(chan []byte, READBYTE)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
 
 	inFile, err := os.OpenFile(infile, os.O_RDONLY, 0644)
 	if err != nil {
@@ -179,36 +155,19 @@ func streamdecryptFiles(infile, outfile, key string, enLen int) error {
 	}
 	defer outFile.Close()
 
-	go func() {
-		for {
-			select {
-			case n, ok := <-inCh:
-				if !ok {
-					wg.Done()
-					return
-				}
-				endata, _ := Decrypt(n, pass, enLen)
-				outFile.Write(endata)
-			}
-		}
-	}()
-
 	for {
-		// 每次读取字节数
 		buffer := make([]byte, READBYTE)
-		data, _ := inFile.Read(buffer)
-
-		// 读取到数据
-		if data > 0 {
-			inCh <- buffer[:data]
-
-		} else {
-			close(inCh)
+		count, err := inFile.Read(buffer)
+		if err == io.EOF {
 			break
 		}
-
+		if err != nil {
+			fmt.Println(err)
+		}
+		// 解密
+		endata, _ := Decrypt(buffer[:count], pass, enLen)
+		outFile.Write(endata)
 	}
-	wg.Wait()
 	return nil
 }
 

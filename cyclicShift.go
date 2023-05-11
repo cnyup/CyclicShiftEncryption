@@ -54,9 +54,10 @@ func (b *body) complement() {
 	if b.dLen%b.enLen != 0 {
 		b.complementNum = b.enLen - (b.dLen % b.enLen)
 		newData = append(b.data, bytes.Repeat([]byte{0}, b.complementNum)...)
+		b.data = newData
+		b.dLen = len(newData)
 	}
-	b.data = newData
-	b.dLen = len(newData)
+
 }
 
 // 按位取反
